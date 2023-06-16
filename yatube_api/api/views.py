@@ -1,12 +1,18 @@
 """Вьюсеты приложения api."""
+from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from rest_framework import mixins, viewsets
+from rest_framework import mixins, status, viewsets
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from posts.models import Group, Post  # isort: skip
+from posts.models import Group, Post, Follow  # isort: skip
 from api.permissions import IsAuthor  # isort: skip
 from api.serializers import (GroupSerializer,  # isort: skip
                              PostSerializer,  # isort: skip
-                             CommentSerializer)  # isort: skip
+                             CommentSerializer,  # isort: skip
+                             FollowSerializer)  # isort: skip
+
+User = get_user_model()
 
 
 class GroupListRetrieveViewSet(mixins.ListModelMixin,
@@ -41,3 +47,26 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user, post=self.get_post())
+
+
+class FollowListCreateViewSet(mixins.ListModelMixin,
+                              mixins.CreateModelMixin,
+                              viewsets.GenericViewSet):
+    """Получает подписки пользователя, создает подписку."""
+    serializer_class = FollowSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        return Follow.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        following = get_object_or_404(
+            User,
+            username=self.request.data.get('following'))
+        user = self.request.user
+
+        if Follow.objects.filter(user=user, following=following).exists():
+            return Response({"message": "Подиска уже существует."},
+                            status.HTTP_409_CONFLICT)
+
+        serializer.save(user=user, following=following)

@@ -1,9 +1,10 @@
 """Вьюсеты приложения api."""
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from rest_framework import mixins, status, viewsets
+from rest_framework import mixins, viewsets
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import (IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
 
 from posts.models import Group, Post, Follow  # isort: skip
 from api.permissions import IsAuthor  # isort: skip
@@ -27,7 +28,7 @@ class PostViewSet(viewsets.ModelViewSet):
     """Позволяет выполнять все операции CRUD с постами."""
     queryset = Post.objects.all()
     serializer_class = PostSerializer
-    permission_classes = (IsAuthor,)
+    permission_classes = (IsAuthenticatedOrReadOnly, IsAuthor)
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -36,7 +37,7 @@ class PostViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     """Позволяет выполнять все операции CRUD с комментариями к постам."""
     serializer_class = CommentSerializer
-    permission_classes = (IsAuthor,)
+    permission_classes = (IsAuthenticatedOrReadOnly, IsAuthor)
 
     def get_post(self):
         """Вспомогательный метод для получения поста."""

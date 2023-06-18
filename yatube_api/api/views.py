@@ -2,8 +2,8 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, status, viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
 from posts.models import Group, Post, Follow  # isort: skip
 from api.permissions import IsAuthor  # isort: skip
@@ -64,9 +64,7 @@ class FollowListCreateViewSet(mixins.ListModelMixin,
             User,
             username=self.request.data.get('following'))
         user = self.request.user
-
-        if Follow.objects.filter(user=user, following=following).exists():
-            return Response({"message": "Подиска уже существует."},
-                            status.HTTP_409_CONFLICT)
-
+        follow = Follow.objects.filter(user=user, following=following)
+        if follow.exists():
+            raise ValidationError({'message': 'Подписка уже существует.'})
         serializer.save(user=user, following=following)

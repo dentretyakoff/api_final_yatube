@@ -1,7 +1,6 @@
 """Серриализаторы приложения api."""
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-from rest_framework.relations import SlugRelatedField, StringRelatedField
+from rest_framework.relations import SlugRelatedField
 
 from posts.models import Comment, Post, Group, Follow  # isort: skip
 
@@ -39,16 +38,9 @@ class FollowSerializer(serializers.ModelSerializer):
     """Серриализатор подписок на авторов."""
     user = serializers.SlugRelatedField(
         read_only=True, slug_field='username')
-    # following = StringRelatedField(read_only=False)
+    following = serializers.SlugRelatedField(
+        read_only=True, slug_field='username')
 
     class Meta:
         model = Follow
         fields = ('user', 'following')
-
-    def validate(self, data):
-        print(data)
-        #print(Follow.objects.exists(user=self.request.get()))
-        if data.get('following', None) is None:
-            print(data)
-            raise ValidationError('Поле following обязательно.')
-        return data

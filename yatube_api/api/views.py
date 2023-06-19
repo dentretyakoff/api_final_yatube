@@ -1,13 +1,12 @@
 """Вьюсеты приложения api."""
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from rest_framework import mixins, status, viewsets
+from rest_framework import mixins, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import (IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
-from rest_framework.response import Response
 
 from posts.models import Group, Post, Follow  # isort: skip
 from api.permissions import IsAuthor  # isort: skip
@@ -66,21 +65,24 @@ class FollowListCreateViewSet(mixins.ListModelMixin,
     def get_queryset(self):
         return Follow.objects.filter(user=self.request.user)
 
-    def create(self, request):
-        serializer = FollowSerializer(data=request.data)
-
-        if serializer.is_valid():
-            self.perform_create(serializer)
-            return Response(serializer.validated_data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
     def perform_create(self, serializer):
+        # Проверяем обязательное поле following
+        if not self.request.data.get('following'):
+            raise ValidationError({'following': ['Обязательное поле.']})
+
+        # Получаем пользвоателей
+        user = self.request.user
         following = get_object_or_404(
             User,
             username=self.request.data.get('following'))
-        user = self.request.user
-        follow = Follow.objects.filter(user=user, following=following)
 
-        if follow.exists():
+        # Проверяем что подписка не на самого себя
+        if user == following:
+            raise ValidationError(
+                {'message': 'Подписка на самого себя запрещена.'})
+
+        # Проверяем что подписка уже существует
+        if Follow.objects.filter(user=user, following=following).exists():
             raise ValidationError({'message': 'Подписка уже существует.'})
+
         serializer.save(user=user, following=following)

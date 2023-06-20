@@ -1,7 +1,6 @@
 """Вьюсеты приложения api."""
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, viewsets
-from rest_framework.exceptions import ValidationError
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import (IsAuthenticated,
@@ -63,12 +62,5 @@ class FollowListCreateViewSet(mixins.ListModelMixin,
         return self.request.user.follower.all()
 
     def perform_create(self, serializer):
-        # Получаем пользвоателей
-        user = self.request.user
-        following = serializer.validated_data.get('following')
-
-        # Проверяем что подписка уже существует
-        if user.follower.filter(following=following).exists():
-            raise ValidationError({'message': 'Подписка уже существует.'})
-
-        serializer.save(user=user, following=following)
+        serializer.save(user=self.request.user,
+                        following=serializer.validated_data.get('following'))

@@ -1,4 +1,4 @@
-"""Серриализаторы приложения api."""
+"""Сериализаторы приложения api."""
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -9,7 +9,7 @@ User = get_user_model()
 
 
 class GroupSerializer(serializers.ModelSerializer):
-    """Серриализатор групп."""
+    """Сериализатор групп."""
 
     class Meta:
         model = Group
@@ -17,7 +17,7 @@ class GroupSerializer(serializers.ModelSerializer):
 
 
 class PostSerializer(serializers.ModelSerializer):
-    """Серриализатор постов."""
+    """Сериализатор постов."""
     author = serializers.SlugRelatedField(slug_field='username',
                                           read_only=True)
 
@@ -39,7 +39,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class FollowSerializer(serializers.ModelSerializer):
-    """Серриализатор подписок на авторов."""
+    """Сериализатор подписок на авторов."""
     user = serializers.SlugRelatedField(
         read_only=True, slug_field='username')
     following = serializers.SlugRelatedField(
@@ -50,16 +50,18 @@ class FollowSerializer(serializers.ModelSerializer):
         fields = ('user', 'following')
 
     def to_internal_value(self, data):
+        user = self.context.get('request').user
+        following = data.get('following')
+
         # Проверяем обязательное поле following
-        if not data.get('following'):
+        if not following:
             raise ValidationError({'following': ['Обязательное поле.']})
 
-        user = self.context.get('request').user
-        # Проверяем существует ли пользователь, на котрого
+        # Проверяем существует ли пользователь, на которого
         # запрашивается подписка. Со встроенным методом get_object_or_404
-        # не проходит тест на некорретные данные.
+        # не проходит тест на некорректные данные.
         try:
-            following = User.objects.get(username=data.get('following'))
+            following = User.objects.get(username=following)
         except User.DoesNotExist:
             raise ValidationError({'message':
                                    f'Пользователь {following} не найден.'})
@@ -68,6 +70,10 @@ class FollowSerializer(serializers.ModelSerializer):
         if user == following:
             raise ValidationError(
                 {'message': 'Подписка на самого себя запрещена.'})
+
+        # Проверяем что подписка уже существует
+        if user.follower.filter(following=following).exists():
+            raise ValidationError({'message': 'Подписка уже существует.'})
 
         # Возвращаем объект User, вместо строки для того чтобы
         # в методе perform_create второй раз не получать его из БД

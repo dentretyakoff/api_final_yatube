@@ -52,11 +52,10 @@ class Follow(models.Model):
         verbose_name='Автор'
     )
 
-    def __str__(self):
-        return f'{self.user}-{self.following}'
-
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=('user', 'following'),
-                                    name='unique_follow')
-        ]
+                                    name='unique_follow')]
+
+    def __str__(self):
+        return f'{self.user}-{self.following}'
